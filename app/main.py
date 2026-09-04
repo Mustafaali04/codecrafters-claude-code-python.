@@ -1,6 +1,6 @@
-    import argparse
-    import os
-    import sys
+import argparse
+import os
+import sys
 
     from openai import OpenAI
 
