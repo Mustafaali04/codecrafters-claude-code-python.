@@ -25,7 +25,7 @@ TOOLS = [
                 "required": ["file_path"]
             }
         }
-    }
+    },
     {
         "type": "function",
         "function": {
