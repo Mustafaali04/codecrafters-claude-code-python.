@@ -8,6 +8,33 @@ from openai import OpenAI
 API_KEY = os.getenv("OPENROUTER_API_KEY")
 BASE_URL = os.getenv("OPENROUTER_BASE_URL", default="https://openrouter.ai/api/v1")
 
+TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "Read",
+            "description": "Read and return the contents of a file",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "The path to the file to read"
+                    }
+                },
+                "required": ["file_path"]
+            }
+        }
+    }
+]
+
+
+def execute_tool(name, tool_args):
+    if name == "Read":
+        with open(tool_args["file_path"]) as f:
+            return f.read()
+    return f"Unknown tool: {name}"
+
 
 def main():
     p = argparse.ArgumentParser()
@@ -18,52 +45,54 @@ def main():
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-while True:
-    chat = client.chat.completions.create(
-        model="anthropic/claude-haiku-4.5",
-        messages=[{"role": "user", "content": args.p}],
-        tools=[
-            {
-                "type": "function",
-                "function": {
-                    "name": "Read",
-                    "description": "Read and return the contents of a file",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {
-                                "type": "string",
-                                "description": "The path to the file to read"
-                            }
-                        },
-                        "required": ["file_path"]
-                    }
+
+    messages = [{"role": "user", "content": args.p}]
+
+    while True:
+        chat = client.chat.completions.create(
+            model="anthropic/claude-haiku-4.5",
+            messages=messages,
+            tools=TOOLS,
+        )
+
+        if not chat.choices or len(chat.choices) == 0:
+            raise RuntimeError("no choices in response")
+
+        print("Logs from your program will appear here!", file=sys.stderr)
+
+        message = chat.choices[0].message
+
+        assistant_message = {
+            "role": "assistant",
+            "content": message.content,
+        }
+        if message.tool_calls:
+            assistant_message["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
                 }
-            }
-        ],
+                for tc in message.tool_calls
+            ]
+        messages.append(assistant_message)
 
-    )
-
-    if not chat.choices or len(chat.choices) == 0:
-        raise RuntimeError("no choices in response")
-
-    # You can use print statements as follows for debugging, they'll be visible when running tests.
-    print("Logs from your program will appear here!", file=sys.stderr)
-
-    # TODO: Uncomment the following line to pass the first stage
-    message = chat.choices[0].message
-    messages.append(message_dict)
-    if not message_dict.get("tool_calls"):
-            print(response.content)
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                tool_args = json.loads(tool_call.function.arguments)
+                result = execute_tool(tool_call.function.name, tool_args)
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result,
+                })
+        else:
+            print(message.content)
             break
-    if message.tool_calls:
-        tool_call = message.tool_calls[0]
-        tool_args = json.loads(tool_call.function.arguments)
-        if tool_call.function.name == "Read":
-            with open(tool_args["file_path"]) as f:
-                print(f.read())
-    else:
-        print(message.content)
+
 
 if __name__ == "__main__":
     main()
