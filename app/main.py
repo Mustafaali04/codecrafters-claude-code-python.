@@ -18,7 +18,7 @@ def main():
         raise RuntimeError("OPENROUTER_API_KEY is not set")
 
     client = OpenAI(api_key=API_KEY, base_url=BASE_URL)
-
+while True:
     chat = client.chat.completions.create(
         model="anthropic/claude-haiku-4.5",
         messages=[{"role": "user", "content": args.p}],
@@ -52,7 +52,10 @@ def main():
 
     # TODO: Uncomment the following line to pass the first stage
     message = chat.choices[0].message
-
+    messages.append(message_dict)
+    if not message_dict.get("tool_calls"):
+            print(response.content)
+            break
     if message.tool_calls:
         tool_call = message.tool_calls[0]
         tool_args = json.loads(tool_call.function.arguments)
