@@ -53,7 +53,6 @@ def execute_tool(name, tool_args):
     if name == "Read":
         with open(tool_args["file_path"]) as f:
             return f.read()
-    return f.read
     if name == "Write":
         with open(tool_args["file_path"], "w") as f:
             f.write(tool_args["content"])
