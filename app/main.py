@@ -26,13 +26,38 @@ TOOLS = [
             }
         }
     }
+    {
+        "type": "function",
+        "function": {
+            "name": "Write",
+            "description": "Write content to a file",
+            "parameters": {
+                "type": "object",
+                "required": ["file_path", "content"],
+                "properties": {
+                    "file_path": {
+                        "type": "string",
+                        "description": "The path to the file to write"
+                    },  
+                    "content": {
+                        "type": "string",
+                        "description": "The content to write to the file"
+                    }
+                }
+            }
+        }
+    }
 ]
-
 
 def execute_tool(name, tool_args):
     if name == "Read":
         with open(tool_args["file_path"]) as f:
             return f.read()
+    return f.read
+    if name == "Write":
+        with open(tool_args["file_path"], "w") as f:
+            f.write(tool_args["content"])
+        return f"File written successfully: {tool_args['file_path']}"
     return f"Unknown tool: {name}"
 
 
